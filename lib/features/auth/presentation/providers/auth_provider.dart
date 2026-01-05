@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../services/auth_service.dart';
+import '../../services/auth_service.dart';
+import 'auth_token_provider.dart';
 
 @immutable
 class AuthState {
@@ -28,17 +29,38 @@ class AuthNotifier extends Notifier<AuthState> {
       final result = await _service.login(email, pass);
 
       final role = result["rol"] as String?;
+      final token = result["token"];
+      final usuario = result["usuario"] as Map<String, dynamic>?;
 
-      if (role == null) {
+      if (token == null || token.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text("No se recibió el rol del usuario.")),
         );
         return;
       }
 
+      if (role == null || role.isEmpty) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No se recibió el rol del usuario.")),
+        );
+        return;
+      }
+
+      ref
+          .read(authSessionProvider.notifier)
+          .setSession(token: token, role: role, user: usuario);
+
       // 🔁 Redirección por rol
       if (role == "SuperADMIN") {
-        Navigator.pushReplacementNamed(context, "/super/dashboard");
+        Navigator.pushReplacementNamed(
+          context,
+          '/super/dashboard',
+          arguments: {
+            'nombre': usuario?['nombre'] ?? '',
+            'apellidos': usuario?['apellidos'] ?? '',
+            'codigoUnico': usuario?['codigoUnico'] ?? '',
+          },
+        );
       } else if (role == "SECRETARIAAsociacion") {
         // De momento solo avisamos que no está implementado
         ScaffoldMessenger.of(context).showSnackBar(
@@ -64,6 +86,11 @@ class AuthNotifier extends Notifier<AuthState> {
     } finally {
       state = state.copyWith(isLoading: false);
     }
+  }
+
+  void logout(BuildContext context) {
+    ref.read(authSessionProvider.notifier).clear();
+    Navigator.pushReplacementNamed(context, "/login");
   }
 }
 

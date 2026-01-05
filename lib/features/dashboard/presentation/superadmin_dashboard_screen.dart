@@ -4,8 +4,17 @@ import '../providers/dashboard_provider.dart';
 
 class SuperAdminDashboardScreen extends StatelessWidget {
   final Map<String, dynamic> data; // viene del provider / servicio
+  final String? nombre;
+  final String? apellidos;
+  final String? codigoUnico;
 
-  const SuperAdminDashboardScreen({super.key, required this.data});
+  const SuperAdminDashboardScreen({
+    super.key,
+    required this.data,
+    this.nombre,
+    this.apellidos,
+    this.codigoUnico,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -13,14 +22,12 @@ class SuperAdminDashboardScreen extends StatelessWidget {
     final asociaciones = (data['asociaciones'] ?? []) as List;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('ADAdmin - SuperADMIN'),
-        centerTitle: true,
-      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
           children: [
+            _buildUsuarioHeader(),
+            const SizedBox(height: 16),
             const Text(
               "Resumen global",
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
@@ -41,6 +48,53 @@ class SuperAdminDashboardScreen extends StatelessWidget {
             // 👉 Lista de asociaciones
             ...asociaciones.map(
               (a) => _buildAsociacionTile(a as Map<String, dynamic>),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  /// Header con los datos del SuperADMIN (nombre, apellido, código)
+  Widget _buildUsuarioHeader() {
+    final fullName = [
+      if (nombre != null && nombre!.isNotEmpty) nombre,
+      if (apellidos != null && apellidos!.isNotEmpty) apellidos,
+    ].join(' ');
+
+    final showName = fullName.isNotEmpty;
+    final showCodigo = codigoUnico != null && codigoUnico!.trim().isNotEmpty;
+
+    if (!showName && !showCodigo) {
+      // Si por alguna razón no vino nada, no mostramos el header
+      return const SizedBox.shrink();
+    }
+
+    return Card(
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        child: Row(
+          children: [
+            const CircleAvatar(radius: 22, child: Icon(Icons.person_outline)),
+            const SizedBox(width: 12),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  showName ? fullName : 'SuperADMIN',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                if (showCodigo)
+                  Text(
+                    'Código: $codigoUnico',
+                    style: const TextStyle(fontSize: 13, color: Colors.grey),
+                  ),
+              ],
             ),
           ],
         ),
@@ -285,8 +339,21 @@ class SuperAdminDashboardWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncDashboard = ref.watch(dashboardProvider);
 
+    // 👇 leemos los argumentos enviados desde el login
+    final args =
+        ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+
+    final nombre = args?['nombre'] as String? ?? '';
+    final apellidos = args?['apellidos'] as String? ?? '';
+    final codigoUnico = args?['codigoUnico'] as String? ?? '';
+
     return asyncDashboard.when(
-      data: (data) => SuperAdminDashboardScreen(data: data),
+      data: (data) => SuperAdminDashboardScreen(
+        data: data,
+        nombre: nombre,
+        apellidos: apellidos,
+        codigoUnico: codigoUnico,
+      ),
       loading: () =>
           const Scaffold(body: Center(child: CircularProgressIndicator())),
       error: (e, st) => Scaffold(body: Center(child: Text('Error: $e'))),
