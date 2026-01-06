@@ -39,6 +39,20 @@ class _SuperAdminCrearUsuarioScreenState
     super.dispose();
   }
 
+  void _limpiarFormulario() {
+    _nombre.clear();
+    _apellidos.clear();
+    _telefono.clear();
+    _email.clear();
+    _codigo.clear();
+    _pass.clear();
+
+    setState(() {
+      _rol = "SECRETARIAAsociacion"; // o el rol por defecto que quieras
+      _obscure = true;
+    });
+  }
+
   String _msgFromDioError(Object e) {
     if (e is DioException) {
       final data = e.response?.data;
@@ -147,7 +161,7 @@ class _SuperAdminCrearUsuarioScreenState
       // ✅ 4) Navegación según rol (si aplica)
       if (userId != null && userId.isNotEmpty) {
         if (_rol == "PASTOR") {
-          Navigator.pushNamed(
+          final ok = await Navigator.pushNamed(
             context,
             "/super/asignar-pastor",
             arguments: {
@@ -157,6 +171,10 @@ class _SuperAdminCrearUsuarioScreenState
               "codigoUnico": codigo,
             },
           );
+
+          if (ok == true) {
+            _limpiarFormulario();
+          }
           return;
         }
 
@@ -189,7 +207,7 @@ class _SuperAdminCrearUsuarioScreenState
       }
 
       // si es SuperADMIN o no hay asignación => volvemos
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } catch (e) {
       if (!mounted) return;
       final msg = _msgFromDioError(e);
@@ -204,7 +222,6 @@ class _SuperAdminCrearUsuarioScreenState
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("Crear usuario"), centerTitle: true),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(

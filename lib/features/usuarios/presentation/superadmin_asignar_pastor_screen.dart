@@ -101,7 +101,7 @@ class _SuperAdminAsignarPastorScreenState
         const SnackBar(content: Text("✅ Pastor asignado correctamente")),
       );
 
-      Navigator.pop(context);
+      Navigator.pop(context, true);
     } on DioException catch (e) {
       final msg =
           (e.response?.data is Map && e.response?.data["message"] != null)

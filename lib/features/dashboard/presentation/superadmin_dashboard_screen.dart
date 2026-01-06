@@ -339,7 +339,6 @@ class SuperAdminDashboardWrapper extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final asyncDashboard = ref.watch(dashboardProvider);
 
-    // 👇 leemos los argumentos enviados desde el login
     final args =
         ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
 
@@ -347,16 +346,39 @@ class SuperAdminDashboardWrapper extends ConsumerWidget {
     final apellidos = args?['apellidos'] as String? ?? '';
     final codigoUnico = args?['codigoUnico'] as String? ?? '';
 
-    return asyncDashboard.when(
-      data: (data) => SuperAdminDashboardScreen(
-        data: data,
-        nombre: nombre,
-        apellidos: apellidos,
-        codigoUnico: codigoUnico,
+    Future<void> abrirCrearUsuario() async {
+      final changed = await Navigator.pushNamed<bool>(
+        context,
+        "/super/crear-usuario",
+      );
+
+      // 🔥 CLAVE: refrescar dashboard
+      if (changed == true) {
+        ref.invalidate(dashboardProvider);
+      }
+    }
+
+    return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: abrirCrearUsuario,
+        child: const Icon(Icons.person_add_alt_1),
       ),
-      loading: () =>
-          const Scaffold(body: Center(child: CircularProgressIndicator())),
-      error: (e, st) => Scaffold(body: Center(child: Text('Error: $e'))),
+      body: asyncDashboard.when(
+        data: (data) => RefreshIndicator(
+          onRefresh: () async {
+            ref.invalidate(dashboardProvider);
+            await ref.read(dashboardProvider.future);
+          },
+          child: SuperAdminDashboardScreen(
+            data: data,
+            nombre: nombre,
+            apellidos: apellidos,
+            codigoUnico: codigoUnico,
+          ),
+        ),
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (e, _) => Center(child: Text('Error: $e')),
+      ),
     );
   }
 }
