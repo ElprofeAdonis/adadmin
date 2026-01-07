@@ -1,25 +1,27 @@
 import 'package:flutter/material.dart';
-import 'superadmin_dashboard_screen.dart'; // tu dashboard actual (wrapper o screen)
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'superadmin_dashboard_screen.dart';
 import 'superadmin_analiticas_screen.dart';
 import 'superadmin_usuarios_screen.dart';
 import 'superadmin_crear_usuario_screen.dart';
 import 'superadmin_reportes_screen.dart';
 
-class SuperAdminShell extends StatefulWidget {
+import '../providers/dashboard_provider.dart';
+import '../../usuarios/providers/usuarios_provider.dart'; // 👈 donde está tu usuariosProvider
+
+class SuperAdminShell extends ConsumerStatefulWidget {
   const SuperAdminShell({super.key});
 
   @override
-  State<SuperAdminShell> createState() => _SuperAdminShellState();
+  ConsumerState<SuperAdminShell> createState() => _SuperAdminShellState();
 }
 
-class _SuperAdminShellState extends State<SuperAdminShell> {
+class _SuperAdminShellState extends ConsumerState<SuperAdminShell> {
   int _index = 0;
 
   final _pages = const [
-    // ✅ Home: tu dashboard (recomendado usar el WRAPPER que trae el provider)
     SuperAdminDashboardWrapper(),
-
-    // 🧩 Pantallas nuevas
     SuperAdminAnaliticasScreen(),
     SuperAdminUsuariosScreen(),
     SuperAdminCrearUsuarioScreen(),
@@ -34,6 +36,20 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
     "Reportes",
   ];
 
+  void _onTap(int i) {
+    // ✅ Refrescar Home/Dashboard cuando se toque Home
+    if (i == 0) {
+      ref.refresh(dashboardProvider);
+    }
+
+    // ✅ Refrescar Usuarios cuando se toque Usuarios
+    if (i == 2) {
+      ref.refresh(usuariosResumenProvider);
+    }
+
+    setState(() => _index = i);
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -41,8 +57,8 @@ class _SuperAdminShellState extends State<SuperAdminShell> {
       body: IndexedStack(index: _index, children: _pages),
       bottomNavigationBar: BottomNavigationBar(
         currentIndex: _index,
-        type: BottomNavigationBarType.fixed, // 👈 necesario para 5 items
-        onTap: (i) => setState(() => _index = i),
+        type: BottomNavigationBarType.fixed,
+        onTap: _onTap,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home_filled), label: "Home"),
           BottomNavigationBarItem(

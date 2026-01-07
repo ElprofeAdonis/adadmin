@@ -2,11 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../providers/dashboard_provider.dart';
 
-class SuperAdminDashboardScreen extends StatelessWidget {
+class SuperAdminDashboardScreen extends ConsumerWidget {
   final Map<String, dynamic> data; // viene del provider / servicio
   final String? nombre;
   final String? apellidos;
   final String? codigoUnico;
+  final VoidCallback? onCrearUsuario;
 
   const SuperAdminDashboardScreen({
     super.key,
@@ -14,14 +15,19 @@ class SuperAdminDashboardScreen extends StatelessWidget {
     this.nombre,
     this.apellidos,
     this.codigoUnico,
+    this.onCrearUsuario,
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final totales = data['totalesGlobales'] ?? {};
     final asociaciones = (data['asociaciones'] ?? []) as List;
 
     return Scaffold(
+      floatingActionButton: FloatingActionButton(
+        onPressed: () => onCrearUsuario,
+        child: const Icon(Icons.person_add),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: ListView(
@@ -33,19 +39,13 @@ class SuperAdminDashboardScreen extends StatelessWidget {
               style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 16),
-
-            // 👉 Cards de totales
             _buildResumenGlobalCards(totales),
-
             const SizedBox(height: 24),
-
             const Text(
               "Asociaciones",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
             ),
             const SizedBox(height: 8),
-
-            // 👉 Lista de asociaciones
             ...asociaciones.map(
               (a) => _buildAsociacionTile(a as Map<String, dynamic>),
             ),
@@ -332,11 +332,22 @@ class SuperAdminDashboardScreen extends StatelessWidget {
   }
 }
 
-class SuperAdminDashboardWrapper extends ConsumerWidget {
+class SuperAdminDashboardWrapper extends ConsumerStatefulWidget {
   const SuperAdminDashboardWrapper({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<SuperAdminDashboardWrapper> createState() =>
+      _SuperAdminDashboardWrapperState();
+}
+
+class _SuperAdminDashboardWrapperState
+    extends ConsumerState<SuperAdminDashboardWrapper> {
+  Future<void> _abrirCrearUsuario(BuildContext context) async {
+    ref.invalidate(dashboardProvider); // vuelve a pedir los datos al backend
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final asyncDashboard = ref.watch(dashboardProvider);
 
     final args =
@@ -346,39 +357,19 @@ class SuperAdminDashboardWrapper extends ConsumerWidget {
     final apellidos = args?['apellidos'] as String? ?? '';
     final codigoUnico = args?['codigoUnico'] as String? ?? '';
 
-    Future<void> abrirCrearUsuario() async {
-      final changed = await Navigator.pushNamed<bool>(
-        context,
-        "/super/crear-usuario",
-      );
+    return asyncDashboard.when(
+      data: (data) => SuperAdminDashboardScreen(
+        data: data,
+        nombre: nombre,
+        apellidos: apellidos,
+        codigoUnico: codigoUnico,
 
-      // 🔥 CLAVE: refrescar dashboard
-      if (changed == true) {
-        ref.invalidate(dashboardProvider);
-      }
-    }
-
-    return Scaffold(
-      floatingActionButton: FloatingActionButton(
-        onPressed: abrirCrearUsuario,
-        child: const Icon(Icons.person_add_alt_1),
+        // 👇 agrega este callback a tu pantalla para el botón flotante
+        onCrearUsuario: () => _abrirCrearUsuario(context),
       ),
-      body: asyncDashboard.when(
-        data: (data) => RefreshIndicator(
-          onRefresh: () async {
-            ref.invalidate(dashboardProvider);
-            await ref.read(dashboardProvider.future);
-          },
-          child: SuperAdminDashboardScreen(
-            data: data,
-            nombre: nombre,
-            apellidos: apellidos,
-            codigoUnico: codigoUnico,
-          ),
-        ),
-        loading: () => const Center(child: CircularProgressIndicator()),
-        error: (e, _) => Center(child: Text('Error: $e')),
-      ),
+      loading: () =>
+          const Scaffold(body: Center(child: CircularProgressIndicator())),
+      error: (e, st) => Scaffold(body: Center(child: Text('Error: $e'))),
     );
   }
 }
